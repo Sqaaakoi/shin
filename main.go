@@ -185,8 +185,18 @@ func (e *engine) ProcessKeyEvent(keyval uint32, keycode uint32, state uint32) (b
 			// block surrounded by newlines, so that tabular
 			// alignment is preserved regardless of where
 			// the output is inserted.
-			if strings.Contains(outputText, "\n") {
+			// Only do that if Ctrl+Enter though.
+			if strings.Contains(outputText, "\n") && state&ControlMask != 0 {
 				outputText = "\n" + outputText + "\n"
+			}
+
+			// Wrap in ` or ``` if Alt+Enter for Discord
+			if state&Mod1Mask != 0 {
+				if strings.Contains(outputText, "\n") {
+					outputText = "```ansi\n" + outputText + "\n```"
+				} else {
+					outputText = "`" + outputText + "`"
+				}
 			}
 
 			e.CommitText(ibus.NewText(outputText))
@@ -237,6 +247,9 @@ func (e *engine) ProcessKeyEvent(keyval uint32, keycode uint32, state uint32) (b
 		return true, nil
 
 	case KeyUp, KeyKPUp:
+		if e.history.disable {
+			return true, nil
+		}
 		if e.historyIndex == 0 {
 			e.historyPrefix = e.text
 		}
@@ -255,6 +268,9 @@ func (e *engine) ProcessKeyEvent(keyval uint32, keycode uint32, state uint32) (b
 		return true, nil
 
 	case KeyDown, KeyKPDown:
+		if e.history.disable {
+			return true, nil
+		}
 		if e.historyIndex == 0 {
 			return true, nil
 		}
